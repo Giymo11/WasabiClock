@@ -12,27 +12,27 @@ import android.support.wearable.watchface.CanvasWatchFaceService
 import android.support.wearable.watchface.WatchFaceService
 import android.support.wearable.watchface.WatchFaceStyle
 import android.view.SurfaceHolder
+import android.widget.Toast
 import science.wasabi.wear.components.AnalogHand
 import science.wasabi.wear.components.ClockDrawable
-import science.wasabi.wear.components.HandSet
 import science.wasabi.wear.components.ShadowLayer
+import science.wasabi.wear.components.Ticks
 import java.lang.ref.WeakReference
 import java.util.*
-
-
+import java.util.concurrent.TimeUnit
 
 /**
  * Analog watch face with a ticking second hand. In ambient mode, the second hand isn't
  * shown. On devices with low-bit ambient mode, the hands are drawn without anti-aliasing in ambient
  * mode. The watch face is drawn with less contrast in mute mode.
  */
-class WasabiMinimal : CanvasWatchFaceService() {
+class WasabiElegant : CanvasWatchFaceService() {
 
     override fun onCreateEngine(): CanvasWatchFaceService.Engine {
         return Engine()
     }
 
-    private class EngineHandler(reference: WasabiMinimal.Engine) : Handler() {
+    private class EngineHandler(reference: WasabiElegant.Engine) : Handler() {
         private val mWeakReference: WeakReference<Engine> = WeakReference(reference)
 
         override fun handleMessage(msg: Message) {
@@ -46,6 +46,9 @@ class WasabiMinimal : CanvasWatchFaceService() {
     }
 
     private inner class Engine : CanvasWatchFaceService.Engine() {
+
+        private val CENTER_GAP_AND_CIRCLE_RADIUS = 4f
+        private val SHADOW_RADIUS = 6
 
         private val mPeekCardBounds = Rect()
         /* Handler to update the time once a second in interactive mode. */
@@ -62,62 +65,22 @@ class WasabiMinimal : CanvasWatchFaceService() {
         private var mCenterX: Float = 0.toFloat()
         private var mCenterY: Float = 0.toFloat()
 
-        private val shinobuYellow = Color.parseColor("#EFE05F")
-        private val makiRed = Color.parseColor("#d84e60")
-        private val nepuPurple = Color.parseColor("#F1C8F1")
-
         /* Set defaults for colors */
+        private val defaultWatchHandColor = Color.WHITE
+        private val defaultWatchHandHighlightColor = Color.RED
         private val defaultWatchHandShadowColor = Color.BLACK
 
-        private val HOUR_STROKE_WIDTH = 13f
-        private val MINUTE_STROKE_WIDTH = 9f
-        private val SECOND_STROKE_WIDTH = 24f
+        private val HOUR_STROKE_WIDTH = 4f
+        private val MINUTE_STROKE_WIDTH = 2.5f
+        private val TICK_STROKE_WIDTH = 1f
 
-        private val SHADOW_RADIUS = 7
         val shadowLayer = ShadowLayer(SHADOW_RADIUS.toFloat(), 0f, 0f, defaultWatchHandShadowColor)
-        val shinobuSet = HandSet(
-                hourHand = AnalogHand(Color.parseColor("#EEEEEE"), HOUR_STROKE_WIDTH, shadowLayer, 0.2f, 0.5f),
-                minuteHand = AnalogHand(Color.parseColor("#e42e40"), MINUTE_STROKE_WIDTH, shadowLayer, 0.35f, 0.90f),
-                secondHand = AnalogHand(Color.parseColor("#222222"), SECOND_STROKE_WIDTH, shadowLayer, 0.95f, 1.0f),
-                background = BitmapFactory.decodeResource(resources, R.drawable.bg_shinobu)
-            )
+        private var hourHand: ClockDrawable = AnalogHand(defaultWatchHandColor, HOUR_STROKE_WIDTH, shadowLayer, 0.0f, 0.33f)
+        private var minuteHand: ClockDrawable = AnalogHand(defaultWatchHandColor, MINUTE_STROKE_WIDTH, shadowLayer, 0.33f, 0.9f)
+        private val ticks = Ticks(Color.parseColor("#888888"), TICK_STROKE_WIDTH, shadowLayer, 0.82f, 1.0f)
 
-        val reinaSet = HandSet(
-                hourHand = AnalogHand(Color.parseColor("#42688d"), HOUR_STROKE_WIDTH, shadowLayer, 0.2f, 0.5f),
-                minuteHand = AnalogHand(Color.parseColor("#fffbbc"), MINUTE_STROKE_WIDTH, shadowLayer, 0.35f, 0.90f),
-                secondHand = AnalogHand(Color.parseColor("#572b46"), SECOND_STROKE_WIDTH, shadowLayer, 0.95f, 1.0f),
-                background = BitmapFactory.decodeResource(resources, R.drawable.bg_reina)
-        )
-        val bluesnowSet = HandSet(
-                hourHand = AnalogHand(Color.parseColor("#393846"), HOUR_STROKE_WIDTH, shadowLayer, 0.2f, 0.5f),
-                minuteHand = AnalogHand(Color.parseColor("#3d4cb3"), MINUTE_STROKE_WIDTH, shadowLayer, 0.35f, 0.90f),
-                secondHand = AnalogHand(Color.parseColor("#f9f9f7"), SECOND_STROKE_WIDTH, shadowLayer, 0.95f, 1.0f),
-                background = BitmapFactory.decodeResource(resources, R.drawable.bg_bluesnow)
-        )
-        val kumikoSet = HandSet(
-                hourHand = AnalogHand(Color.parseColor("#3d2221"), HOUR_STROKE_WIDTH, shadowLayer, 0.2f, 0.5f),
-                minuteHand = AnalogHand(Color.parseColor("#934e2d"), MINUTE_STROKE_WIDTH, shadowLayer, 0.35f, 0.90f),
-                secondHand = AnalogHand(Color.parseColor("#eae4da"), SECOND_STROKE_WIDTH, shadowLayer, 0.95f, 1.0f),
-                background = BitmapFactory.decodeResource(resources, R.drawable.bg_kumiko)
-        )
-        val yumeSet = HandSet(
-                hourHand = AnalogHand(Color.parseColor("#283d50"), HOUR_STROKE_WIDTH, shadowLayer, 0.2f, 0.5f),
-                minuteHand = AnalogHand(Color.parseColor("#a55c65"), MINUTE_STROKE_WIDTH, shadowLayer, 0.35f, 0.90f),
-                secondHand = AnalogHand(Color.parseColor("#8dc6cd"), SECOND_STROKE_WIDTH, shadowLayer, 0.95f, 1.0f),
-                background = BitmapFactory.decodeResource(resources, R.drawable.bg_yume)
-        )
-
-        var currentIndex = 0
-        val sets: List<HandSet> = listOf(
-                shinobuSet, reinaSet, bluesnowSet, kumikoSet, yumeSet
-        )
-
-        private val mBackgroundPaint: Paint by lazy {
-            val paint = Paint()
-            paint.color = Color.BLACK
-            paint
-        }
-        private var scaledBackgroundImage: Bitmap? = null
+        private var mBackgroundPaint: Paint? = null
+        private var mBackgroundBitmap: Bitmap? = null
         private var mGrayBackgroundBitmap: Bitmap? = null
         private var mAmbient: Boolean = false
         private var mLowBitAmbient: Boolean = false
@@ -127,22 +90,16 @@ class WasabiMinimal : CanvasWatchFaceService() {
         override fun onCreate(holder: SurfaceHolder?) {
             super.onCreate(holder)
 
-            setWatchFaceStyle(WatchFaceStyle.Builder(this@WasabiMinimal)
+            setWatchFaceStyle(WatchFaceStyle.Builder(this@WasabiElegant)
                     .setCardPeekMode(WatchFaceStyle.PEEK_MODE_SHORT)
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .setAcceptsTapEvents(true)
                     .build())
 
-            /* Extract colors from background image to improve watchface style. */
-            /*
-            Palette.from(scaledBackgroundImage!!).generate { palette ->
-                if (palette != null) {
-                    hourHand = hourHand.withColor(palette.getLightVibrantColor(Color.RED))
-                    minuteHand = minuteHand.withColor(palette.getLightVibrantColor(Color.RED))
-                    secondHand = secondHand.withColor(palette.getLightVibrantColor(Color.RED))
-                }
-            }*/
+            mBackgroundPaint = Paint()
+            mBackgroundPaint!!.color = Color.BLACK
+            mBackgroundBitmap = BitmapFactory.decodeResource(resources, R.drawable.black)
 
             mCalendar = Calendar.getInstance()
         }
@@ -167,9 +124,13 @@ class WasabiMinimal : CanvasWatchFaceService() {
             super.onAmbientModeChanged(inAmbientMode)
             mAmbient = inAmbientMode
 
+            updateWatchHandStyle()
+
             /* Check and trigger whether or not timer should be running (only in active mode). */
             updateTimer()
         }
+
+        fun updateWatchHandStyle() {}
 
         override fun onInterruptionFilterChanged(interruptionFilter: Int) {
             super.onInterruptionFilterChanged(interruptionFilter)
@@ -180,20 +141,6 @@ class WasabiMinimal : CanvasWatchFaceService() {
                 mMuteMode = inMuteMode
                 invalidate()
             }
-        }
-
-        fun reScaleBackground() {
-            val currentBitmap = sets[currentIndex].background
-
-            val width = mCenterX * 2f
-
-            /* Scale loaded background image (more efficient) if surface dimensions change. */
-            val scale = width.toFloat() / currentBitmap!!.width.toFloat()
-
-            scaledBackgroundImage = Bitmap.createScaledBitmap(currentBitmap,
-                    (currentBitmap.width * scale).toInt(),
-                    (currentBitmap.height * scale).toInt(), true
-            )
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -207,7 +154,12 @@ class WasabiMinimal : CanvasWatchFaceService() {
             mCenterX = width / 2f
             mCenterY = height / 2f
 
-            reScaleBackground()
+            /* Scale loaded background image (more efficient) if surface dimensions change. */
+            val scale = width.toFloat() / mBackgroundBitmap!!.width.toFloat()
+
+            mBackgroundBitmap = Bitmap.createScaledBitmap(mBackgroundBitmap,
+                    (mBackgroundBitmap!!.width * scale).toInt(),
+                    (mBackgroundBitmap!!.height * scale).toInt(), true)
         }
 
         /**
@@ -216,16 +168,12 @@ class WasabiMinimal : CanvasWatchFaceService() {
          */
         override fun onTapCommand(tapType: Int, x: Int, y: Int, eventTime: Long) {
             when (tapType) {
-                // The user has started touching the screen.
+            // The user has started touching the screen.
                 WatchFaceService.TAP_TYPE_TOUCH -> {}
-                // The user has started a different gesture or otherwise cancelled the tap.
+            // The user has started a different gesture or otherwise cancelled the tap.
                 WatchFaceService.TAP_TYPE_TOUCH_CANCEL -> {}
-                // The user has completed the tap gesture.
-                WatchFaceService.TAP_TYPE_TAP -> {
-                    //Toast.makeText(applicationContext, R.string.message, Toast.LENGTH_SHORT).show()
-                    currentIndex = (currentIndex + 1) % sets.size
-                    reScaleBackground()
-                }
+            // The user has completed the tap gesture.
+                WatchFaceService.TAP_TYPE_TAP -> Toast.makeText(applicationContext, R.string.message, Toast.LENGTH_SHORT).show()
             }
             invalidate()
         }
@@ -234,30 +182,19 @@ class WasabiMinimal : CanvasWatchFaceService() {
             val now = System.currentTimeMillis()
             mCalendar!!.timeInMillis = now
 
-            val hourHand: ClockDrawable = sets[currentIndex].hourHand
-            val minuteHand: ClockDrawable = sets[currentIndex].minuteHand
-            val secondHand: ClockDrawable = sets[currentIndex].secondHand
-
-            fun drawBackground(canvas: Canvas) {
-                if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
-                    canvas.drawColor(Color.BLACK)
-                } else {
-                    canvas.drawBitmap(scaledBackgroundImage!!, 0f, 0f, mBackgroundPaint)
-                }
+            if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
+                canvas!!.drawColor(Color.BLACK)
+            } else {
+                canvas!!.drawBitmap(mBackgroundBitmap!!, 0f, 0f, mBackgroundPaint)
             }
-            drawBackground(canvas!!)
-            //canvas!!.drawColor(Color.BLACK)
 
-            360 / (60 * 60)
+            ticks.drawOntoCanvas(canvas, mCenterX, mAmbient)
 
             /*
              * These calculations reflect the rotation in degrees per unit of time, e.g.,
              * 360 / 60 = 6 and 360 / 12 = 30.
              */
-            val seconds = mCalendar!!.get(Calendar.SECOND) + mCalendar!!.get(Calendar.MILLISECOND) / 1000f
-            val secondsRotation = seconds * 6f // 360 / 60
-
-            val minutesRotation = mCalendar!!.get(Calendar.MINUTE) * 6f + (seconds / 10f)
+            val minutesRotation = mCalendar!!.get(Calendar.MINUTE) * 6f
 
             val hourHandOffset = mCalendar!!.get(Calendar.MINUTE) / 2f
             val hoursRotation = mCalendar!!.get(Calendar.HOUR) * 30 + hourHandOffset
@@ -267,22 +204,11 @@ class WasabiMinimal : CanvasWatchFaceService() {
              */
             canvas.save()
 
-            canvas.rotate(minutesRotation, mCenterX, mCenterY)
-            minuteHand.drawOntoCanvas(canvas, mCenterX, mAmbient)
-
-            canvas.rotate(hoursRotation - minutesRotation, mCenterX, mCenterY)
+            canvas.rotate(hoursRotation, mCenterX, mCenterY)
             hourHand.drawOntoCanvas(canvas, mCenterX, mAmbient)
 
-
-            /*
-             * Ensure the "seconds" hand is drawn only when we are in interactive mode.
-             * Otherwise, we only update the watch face once a minute.
-             */
-            if (!mAmbient) {
-                canvas.rotate(secondsRotation - minutesRotation, mCenterX, mCenterY)
-                secondHand.drawOntoCanvas(canvas, mCenterX, mAmbient)
-
-            }
+            canvas.rotate(minutesRotation - hoursRotation, mCenterX, mCenterY)
+            minuteHand.drawOntoCanvas(canvas, mCenterX, mAmbient)
 
             /* Restore the canvas' original orientation. */
             canvas.restore()
@@ -320,7 +246,7 @@ class WasabiMinimal : CanvasWatchFaceService() {
             }
             mRegisteredTimeZoneReceiver = true
             val filter = IntentFilter(Intent.ACTION_TIMEZONE_CHANGED)
-            this@WasabiMinimal.registerReceiver(mTimeZoneReceiver, filter)
+            this@WasabiElegant.registerReceiver(mTimeZoneReceiver, filter)
         }
 
         private fun unregisterReceiver() {
@@ -328,7 +254,7 @@ class WasabiMinimal : CanvasWatchFaceService() {
                 return
             }
             mRegisteredTimeZoneReceiver = false
-            this@WasabiMinimal.unregisterReceiver(mTimeZoneReceiver)
+            this@WasabiElegant.unregisterReceiver(mTimeZoneReceiver)
         }
 
         /**
@@ -367,7 +293,7 @@ class WasabiMinimal : CanvasWatchFaceService() {
          * Update rate in milliseconds for interactive mode. We update once a second to advance the
          * second hand.
          */
-        private val INTERACTIVE_UPDATE_RATE_MS = 33 //TimeUnit.SECONDS.toMillis(1)
+        private val INTERACTIVE_UPDATE_RATE_MS = TimeUnit.SECONDS.toMillis(1)
 
         /**
          * Handler message id for updating the time periodically in interactive mode.
